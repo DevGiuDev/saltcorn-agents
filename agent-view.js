@@ -50,7 +50,24 @@ const {
   saveInteractions,
 } = require("./common");
 const MarkdownIt = require("markdown-it"),
-  md = new MarkdownIt({ html: true, breaks: true, linkify: true });
+  hljs = require("highlight.js"),
+  md = new MarkdownIt({
+    html: true,
+    breaks: true,
+    linkify: true,
+    highlight: function (str, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        try {
+          return (
+            '<pre class="hljs"><code>' +
+            hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+            "</code></pre>"
+          );
+        } catch (__) {}
+      }
+      return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + "</code></pre>";
+    },
+  });
 const { isWeb, escapeHtml } = require("@saltcorn/data/utils");
 const path = require("path");
 
@@ -184,7 +201,19 @@ const realTimeCollabScript = (viewname, rndid, layout) => {
   const view = View.findOne({ name: viewname });
   return script(
     domReady(`
-      const md = markdownit({html: true, breaks: true, linkify: true})
+      const md = markdownit({
+        html: true, 
+        breaks: true, 
+        linkify: true,
+        highlight: function (str, lang) {
+          if (lang && hljs.getLanguage(lang)) {
+            try {
+              return '<pre class="hljs"><code>' + hljs.highlight(str, { language: lang, ignoreIllegals: true }).value + '</code></pre>';
+            } catch (__) {}
+          }
+          return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+        }
+      })
       window['stream scratch ${viewname} ${rndid}'] = []
   const callback = () => {
     const collabCfg = {
@@ -217,12 +246,14 @@ const realTimeCollabScript = (viewname, rndid, layout) => {
     ensure_script_loaded("/static_assets/${
       db.connectObj.version_tag
     }/socket.io.min.js", callback);
+    ensure_script_loaded("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js");
   }
   else {
     //legacy
     ensure_script_loaded("/static_assets/${
       db.connectObj.version_tag
     }/socket.io.min.js");
+    ensure_script_loaded("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js", callback);
     callback();
   }`),
   );
@@ -886,6 +917,32 @@ const run = async (
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
+            }
+            /* Highlight.js code styling */
+            .hljs {
+              background: #f6f8fa;
+              border-radius: 0.375rem;
+              padding: 0.75rem;
+              overflow-x: auto;
+            }
+            .hljs .hljs-keyword { color: #d73a49; }
+            .hljs .hljs-string { color: #032f62; }
+            .hljs .hljs-number { color: #005cc5; }
+            .hljs .hljs-function { color: #6f42c1; }
+            .hljs .hljs-comment { color: #6a737d; font-style: italic; }
+            .hljs .hljs-class { color: #6f42c1; font-weight: bold; }
+            .hljs .hljs-title { color: #005cc5; }
+            .hljs .hljs-params { color: #e36209; }
+            .hljs .hljs-built_in { color: #005cc5; }
+            .hljs .hljs-literal { color: #005cc5; }
+            .hljs .hljs-type { color: #6f42c1; }
+            .hljs .hljs-addition { color: #22863a; background-color: #f0fff4; }
+            .hljs .hljs-deletion { color: #b31d28; background-color: #ffeef0; }
+            .modern-chat-layout .chat-bubble .hljs {
+              background: rgba(0,0,0,0.06);
+            }
+            .modern-chat-layout .chat-user .chat-bubble .hljs {
+              background: rgba(255,255,255,0.15);
             }`,
     ),
     script(domReady(`$( "#inputuserinput" ).autogrow({paddingBottom: 20});`)),

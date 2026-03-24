@@ -6,7 +6,24 @@ const { interpolate } = require("@saltcorn/data/utils");
 const db = require("@saltcorn/data/db");
 
 const MarkdownIt = require("markdown-it"),
-  md = new MarkdownIt({ html: true, breaks: true, linkify: true });
+  hljs = require("highlight.js"),
+  md = new MarkdownIt({
+    html: true,
+    breaks: true,
+    linkify: true,
+    highlight: function (str, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        try {
+          return (
+            '<pre class="hljs"><code>' +
+            hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+            "</code></pre>"
+          );
+        } catch (__) {}
+      }
+      return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + "</code></pre>";
+    },
+  });
 
 const nubBy = (f, xs) => {
   const vs = new Set();
@@ -70,7 +87,9 @@ const find_tool = (name, config) => {
         ? skillTools
         : [skillTools];
     const found = tools.find((t) => t?.function?.name === name);
-    if (found) return { tool: found, skill };
+    if (found) {
+      return { tool: found, skill };
+    }
   }
 };
 
